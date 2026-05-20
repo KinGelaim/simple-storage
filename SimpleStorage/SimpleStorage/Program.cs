@@ -1,3 +1,3 @@
-using SimpleStorage;
 
-var store = new SimpleStore();
+
+Console.ReadKey();
