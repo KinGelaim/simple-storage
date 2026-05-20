@@ -12,19 +12,19 @@ internal static class CommandParser
     public static CommandParts Parse(ReadOnlySpan<byte> bytes)
     {
         var result = new CommandParts();
+        var byteSpace = (byte)' ';
 
-        var firstSpace = bytes.IndexOf((byte)' ');
+        var firstSpace = bytes.IndexOf(byteSpace);
         if (firstSpace == -1)
         {
             return result;
         }
 
-
         result.Command = bytes.Slice(0, firstSpace);
 
-        var remaining = bytes.Slice(firstSpace + 1);
+        var remaining = bytes.Slice(firstSpace + 1).Trim(byteSpace);
 
-        var secondSpace = remaining.IndexOf((byte)' ');
+        var secondSpace = remaining.IndexOf(byteSpace);
         if (secondSpace == -1)
         {
             result.Key = remaining;
@@ -33,7 +33,7 @@ internal static class CommandParser
         else
         {
             result.Key = remaining.Slice(0, secondSpace);
-            result.Value = remaining.Slice(secondSpace + 1);
+            result.Value = remaining.Slice(secondSpace + 1).Trim(byteSpace);
         }
 
         return result;
