@@ -20,20 +20,20 @@ internal static class CommandParser
             return result;
         }
 
-        result.Command = bytes.Slice(0, firstSpace);
+        result.Command = bytes[..firstSpace];
 
-        var remaining = bytes.Slice(firstSpace + 1).Trim(byteSpace);
+        var remaining = bytes[(firstSpace + 1)..].Trim(byteSpace);
 
         var secondSpace = remaining.IndexOf(byteSpace);
         if (secondSpace == -1)
         {
             result.Key = remaining;
-            result.Value = ReadOnlySpan<byte>.Empty;
+            result.Value = [];
         }
         else
         {
-            result.Key = remaining.Slice(0, secondSpace);
-            result.Value = remaining.Slice(secondSpace + 1).Trim(byteSpace);
+            result.Key = remaining[..secondSpace];
+            result.Value = remaining[(secondSpace + 1)..].Trim(byteSpace);
         }
 
         return result;

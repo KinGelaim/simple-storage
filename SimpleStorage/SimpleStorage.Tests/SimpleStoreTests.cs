@@ -10,7 +10,7 @@ public sealed class SimpleStoreTests
         var key1 = "key1";
         var value1 = new byte[] { 1, 2, 3 };
         var key2 = "key2";
-        var value2= new byte[] { 4, 5, 6 };
+        var value2 = new byte[] { 4, 5, 6 };
 
         // Act
         store.Set(key1, value1);
