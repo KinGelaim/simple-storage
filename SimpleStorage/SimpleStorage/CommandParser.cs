@@ -14,13 +14,27 @@ internal static class CommandParser
         var result = new CommandParts();
 
         var firstSpace = bytes.IndexOf((byte)' ');
+        if (firstSpace == -1)
+        {
+            return result;
+        }
+
+
         result.Command = bytes.Slice(0, firstSpace);
 
         var remaining = bytes.Slice(firstSpace + 1);
 
         var secondSpace = remaining.IndexOf((byte)' ');
-        result.Key = remaining.Slice(0, secondSpace);
-        result.Value = remaining.Slice(secondSpace + 1);
+        if (secondSpace == -1)
+        {
+            result.Key = remaining;
+            result.Value = ReadOnlySpan<byte>.Empty;
+        }
+        else
+        {
+            result.Key = remaining.Slice(0, secondSpace);
+            result.Value = remaining.Slice(secondSpace + 1);
+        }
 
         return result;
     }
