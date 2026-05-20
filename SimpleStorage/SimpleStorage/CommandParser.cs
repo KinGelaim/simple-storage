@@ -11,6 +11,17 @@ internal static class CommandParser
     /// <param name="bytes">Входящая последовательность байт вида "COMMAND KEY VALUE"</param>
     public static CommandParts Parse(ReadOnlySpan<byte> bytes)
     {
-        return new CommandParts();
+        var result = new CommandParts();
+
+        var firstSpace = bytes.IndexOf((byte)' ');
+        result.Command = bytes.Slice(0, firstSpace);
+
+        var remaining = bytes.Slice(firstSpace + 1);
+
+        var secondSpace = remaining.IndexOf((byte)' ');
+        result.Key = remaining.Slice(0, secondSpace);
+        result.Value = remaining.Slice(secondSpace + 1);
+
+        return result;
     }
 }
