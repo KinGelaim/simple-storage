@@ -13,29 +13,28 @@ internal static class CommandParser
     {
         var result = new CommandParts();
         var byteSpace = (byte)' ';
+        var trimBytes = bytes.Trim(byteSpace);
 
-        var firstSpace = bytes.IndexOf(byteSpace);
+        var firstSpace = trimBytes.IndexOf(byteSpace);
         if (firstSpace == -1)
         {
             return result;
         }
 
-        result.Command = bytes[..firstSpace];
+        result.Command = trimBytes[..firstSpace];
 
-        var remaining = bytes[(firstSpace + 1)..].Trim(byteSpace);
+        var remaining = trimBytes[(firstSpace + 1)..].Trim(byteSpace);
 
         var secondSpace = remaining.IndexOf(byteSpace);
         if (secondSpace == -1)
         {
             result.Key = remaining;
             result.Value = [];
-        }
-        else
-        {
-            result.Key = remaining[..secondSpace];
-            result.Value = remaining[(secondSpace + 1)..].Trim(byteSpace);
+            return result;
         }
 
+        result.Key = remaining[..secondSpace];
+        result.Value = remaining[(secondSpace + 1)..].Trim(byteSpace);
         return result;
     }
 }
