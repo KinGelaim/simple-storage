@@ -47,6 +47,10 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
             while (true)
             {
                 var bytesRead = await client.ReceiveAsync(buffer, SocketFlags.None);
+                if (bytesRead == 0)
+                {
+                    break;
+                }
 
                 var dataMemory = new ReadOnlySpan<byte>(buffer, 0, bytesRead);
                 var commandParts = CommandParser.Parse(dataMemory);
@@ -64,6 +68,13 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
+
+            try
+            {
+                client.Shutdown(SocketShutdown.Both);
+            }
+            catch { }
+            client.Close();
         }
     }
 
