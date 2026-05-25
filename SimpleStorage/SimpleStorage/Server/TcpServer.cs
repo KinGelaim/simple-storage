@@ -1,3 +1,5 @@
+using SimpleStorage.Parser;
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 
@@ -35,7 +37,35 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         }
     }
 
-    private async Task ProcessClientAsync(Socket client) => throw new NotImplementedException();
+    private static async Task ProcessClientAsync(Socket client)
+    {
+        var bufferSize = 1024;
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+
+        try
+        {
+            while (true)
+            {
+                var bytesRead = await client.ReceiveAsync(buffer, SocketFlags.None);
+
+                var dataMemory = new ReadOnlySpan<byte>(buffer, 0, bytesRead);
+                var commandParts = CommandParser.Parse(dataMemory);
+
+                var command = commandParts.Command.ToString();
+                var key = commandParts.Key.ToString();
+                var value = commandParts.Value.ToString();
+                Console.WriteLine($"Команда: {command}, Ключ: {key}, Значение: {value}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при обработке клиента: {ex.Message}");
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
 
     public void Dispose() => _socket?.Dispose();
 }
