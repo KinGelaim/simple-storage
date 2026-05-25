@@ -1,4 +1,4 @@
-namespace SimpleStorage;
+namespace SimpleStorage.Storage;
 
 /// <summary>
 /// Базовое хранилище

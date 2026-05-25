@@ -1,4 +1,4 @@
-namespace SimpleStorage;
+namespace SimpleStorage.Models;
 
 /// <summary>
 /// Составные части команды

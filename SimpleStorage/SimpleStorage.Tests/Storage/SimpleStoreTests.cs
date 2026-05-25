@@ -1,4 +1,6 @@
-namespace SimpleStorage.Tests;
+using SimpleStorage.Storage;
+
+namespace SimpleStorage.Tests.Storage;
 
 public sealed class SimpleStoreTests
 {

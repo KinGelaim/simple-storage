@@ -1,4 +1,6 @@
-namespace SimpleStorage;
+using SimpleStorage.Models;
+
+namespace SimpleStorage.Parser;
 
 /// <summary>
 /// Парсер команд

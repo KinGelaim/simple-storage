@@ -1,6 +1,7 @@
+using SimpleStorage.Parser;
 using SimpleStorage.Tests.Utils;
 
-namespace SimpleStorage.Tests;
+namespace SimpleStorage.Tests.Parser;
 
 public sealed class CommandParserTests
 {
