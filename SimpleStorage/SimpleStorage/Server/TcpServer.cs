@@ -2,6 +2,7 @@ using SimpleStorage.Parser;
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 namespace SimpleStorage.Server;
 
@@ -20,15 +21,18 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
 
         Console.WriteLine($"Сервер слушает по адресу {_ip}:{_port}");
 
+        var clientCounter = 1;
         while (true)
         {
             try
             {
                 var client = await _socket.AcceptAsync(cancellationToken);
 
-                Console.WriteLine("Клиент подключился!");
+                Console.WriteLine($"Клиент {clientCounter} подключился");
 
-                _ = ProcessClientAsync(client, cancellationToken);
+                _ = ProcessClientAsync(client, clientCounter, cancellationToken);
+
+                clientCounter++;
             }
             catch (OperationCanceledException)
             {
@@ -41,7 +45,10 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         }
     }
 
-    private static async Task ProcessClientAsync(Socket client, CancellationToken cancellationToken)
+    private static async Task ProcessClientAsync(
+        Socket client,
+        int clientCounter,
+        CancellationToken cancellationToken)
     {
         var bufferSize = 1024;
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -50,19 +57,21 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         {
             while (true)
             {
-                var bytesRead = await client.ReceiveAsync(buffer, SocketFlags.None, cancellationToken);
+                var bytesRead = await client.ReceiveAsync(
+                    buffer,
+                    SocketFlags.None,
+                    cancellationToken);
                 if (bytesRead == 0)
                 {
                     break;
                 }
 
-                var data = new ReadOnlySpan<byte>(buffer, 0, bytesRead);
-                var commandParts = CommandParser.Parse(data);
+                var commandParts = CommandParser.Parse(buffer);
 
-                var command = commandParts.Command.ToString();
-                var key = commandParts.Key.ToString();
-                var value = commandParts.Value.ToString();
-                Console.WriteLine($"Команда: {command}, Ключ: {key}, Значение: {value}");
+                var command = Encoding.UTF8.GetString(commandParts.Command);
+                var key = Encoding.UTF8.GetString(commandParts.Key);
+                var value = Encoding.UTF8.GetString(commandParts.Value);
+                Console.WriteLine($"Команда от клиента {clientCounter}: {command}, Ключ: {key}, Значение: {value}");
             }
         }
         catch (OperationCanceledException) { }
@@ -72,13 +81,9 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         }
         finally
         {
+            Console.WriteLine($"Отключение клиента {clientCounter}");
             ArrayPool<byte>.Shared.Return(buffer);
-
-            try
-            {
-                client.Shutdown(SocketShutdown.Both);
-            }
-            catch { }
+            client.Shutdown(SocketShutdown.Both);
             client.Close();
         }
     }
