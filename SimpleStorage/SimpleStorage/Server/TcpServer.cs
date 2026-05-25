@@ -18,8 +18,24 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
 
         Console.WriteLine($"Сервер слушает по адресу {_ip}:{_port}");
 
-        await Task.Delay(Timeout.Infinite);
+        while (true)
+        {
+            try
+            {
+                var client = await _socket.AcceptAsync();
+
+                Console.WriteLine("Клиент подключился!");
+
+                _ = ProcessClientAsync(client);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка подключения клиента: {ex.Message}");
+            }
+        }
     }
+
+    private async Task ProcessClientAsync(Socket client) => throw new NotImplementedException();
 
     public void Dispose() => _socket?.Dispose();
 }
