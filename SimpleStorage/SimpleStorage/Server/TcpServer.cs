@@ -11,7 +11,7 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
     private readonly IPAddress _ip = IPAddress.Parse(ip);
     private readonly int _port = port;
 
-    public async Task StartAsync()
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -24,11 +24,15 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         {
             try
             {
-                var client = await _socket.AcceptAsync();
+                var client = await _socket.AcceptAsync(cancellationToken);
 
                 Console.WriteLine("Клиент подключился!");
 
-                _ = ProcessClientAsync(client);
+                _ = ProcessClientAsync(client, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -37,7 +41,7 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         }
     }
 
-    private static async Task ProcessClientAsync(Socket client)
+    private static async Task ProcessClientAsync(Socket client, CancellationToken cancellationToken)
     {
         var bufferSize = 1024;
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -46,14 +50,14 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         {
             while (true)
             {
-                var bytesRead = await client.ReceiveAsync(buffer, SocketFlags.None);
+                var bytesRead = await client.ReceiveAsync(buffer, SocketFlags.None, cancellationToken);
                 if (bytesRead == 0)
                 {
                     break;
                 }
 
-                var dataMemory = new ReadOnlySpan<byte>(buffer, 0, bytesRead);
-                var commandParts = CommandParser.Parse(dataMemory);
+                var data = new ReadOnlySpan<byte>(buffer, 0, bytesRead);
+                var commandParts = CommandParser.Parse(data);
 
                 var command = commandParts.Command.ToString();
                 var key = commandParts.Key.ToString();
@@ -61,6 +65,7 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
                 Console.WriteLine($"Команда: {command}, Ключ: {key}, Значение: {value}");
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             Console.WriteLine($"Ошибка при обработке клиента: {ex.Message}");
