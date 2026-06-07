@@ -69,4 +69,63 @@ public sealed class SimpleStoreTests
         // Assert
         Assert.Null(store.Get(key));
     }
+
+    [Fact]
+    public async Task ParallelSetAndGet_SuccessfullySavesAndRetrievesDataAndCorrectStatistics()
+    {
+        var store = new SimpleStore();
+
+        var totalTasks = 100;
+        var setTasksCount = 60;
+        var getTasksCount = totalTasks - setTasksCount;
+
+        var tasks = new Task[totalTasks];
+
+        // SET задачи
+        for (var i = 0; i < setTasksCount; i++)
+        {
+            var index = i;
+            tasks[i] = Task.Run(() =>
+            {
+                var key = $"key_{index}";
+                var value = BitConverter.GetBytes(index);
+                store.Set(key, value);
+            });
+        }
+
+        // GET задачи
+        for (var i = setTasksCount; i < totalTasks; i++)
+        {
+            var index = i - setTasksCount;
+            tasks[i] = Task.Run(() =>
+            {
+                var key = $"key_{index}";
+                var result = store.Get(key);
+                if (result != null)
+                {
+                    var val = BitConverter.ToInt32(result, 0);
+                    Assert.Equal(index, val);
+                }
+            });
+        }
+
+        await Task.WhenAll(tasks);
+
+        // Проверяем статистику
+        var (setCount, getCount, deleteCount) = store.GetStatistics();
+        Assert.Equal(setTasksCount, setCount);
+        Assert.Equal(getTasksCount, getCount);
+        Assert.Equal(0, deleteCount);
+
+        // Проверка данных по ключам
+        for (var i = 0; i < setTasksCount; i++)
+        {
+            var key = $"key_{i}";
+            var value = store.Get(key);
+            Assert.NotNull(value);
+
+            var val = BitConverter.ToInt32(value, 0);
+            Assert.Equal(i, val);
+        }
+    }
 }
