@@ -19,6 +19,8 @@ internal sealed class SimpleStore : IDisposable
     /// <param name="value">Значение</param>
     public void Set(string key, byte[] value)
     {
+        Interlocked.Increment(ref _setCount);
+
         _lock.EnterWriteLock();
         try
         {
@@ -37,6 +39,8 @@ internal sealed class SimpleStore : IDisposable
     /// <returns>Значение по ключу или null, если ключ не найден</returns>
     public byte[]? Get(string key)
     {
+        Interlocked.Increment(ref _getCount);
+
         _lock.EnterReadLock();
         try
         {
@@ -55,6 +59,8 @@ internal sealed class SimpleStore : IDisposable
     /// <param name="key">Ключ</param>
     public void Delete(string key)
     {
+        Interlocked.Increment(ref _deleteCount);
+
         _lock.EnterWriteLock();
         try
         {
@@ -67,7 +73,9 @@ internal sealed class SimpleStore : IDisposable
     }
 
     public (long SetCount, long GetCount, long DeleteCount) GetStatistics()
-        => (_setCount, _getCount, _deleteCount);
+        => (Interlocked.Read(ref _setCount),
+            Interlocked.Read(ref _getCount),
+            Interlocked.Read(ref _deleteCount));
 
     public void Dispose() => _lock.Dispose();
 }
