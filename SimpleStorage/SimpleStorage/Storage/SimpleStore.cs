@@ -8,6 +8,10 @@ internal sealed class SimpleStore : IDisposable
     private readonly Dictionary<string, byte[]> _data = [];
     private readonly ReaderWriterLockSlim _lock = new();
 
+    private long _setCount = 0;
+    private long _getCount = 0;
+    private long _deleteCount = 0;
+
     /// <summary>
     /// Добавление или обновление значения по ключу
     /// </summary>
@@ -61,6 +65,9 @@ internal sealed class SimpleStore : IDisposable
             _lock.ExitWriteLock();
         }
     }
+
+    public (long SetCount, long GetCount, long DeleteCount) GetStatistics()
+        => (_setCount, _getCount, _deleteCount);
 
     public void Dispose() => _lock.Dispose();
 }
