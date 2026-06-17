@@ -15,6 +15,7 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
     private readonly SimpleStore _store = store;
 
     private readonly byte[] _successResponse = Encoding.UTF8.GetBytes("OK\r\n");
+    private readonly byte[] _notFoundResponse = Encoding.UTF8.GetBytes("(nil)\r\n");
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -86,6 +87,9 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                 {
                     case "GET":
                         var result = _store.Get(key);
+                        response = result is not null
+                            ? result
+                            : _notFoundResponse;
                         break;
                     case "SET":
                         var value = commandParts.Value.ToArray();
