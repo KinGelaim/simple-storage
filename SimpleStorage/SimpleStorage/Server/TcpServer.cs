@@ -47,7 +47,7 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
         }
     }
 
-    private static async Task ProcessClientAsync(
+    private async Task ProcessClientAsync(
         Socket client,
         int clientCounter,
         CancellationToken cancellationToken)
@@ -70,10 +70,30 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
 
                 var commandParts = CommandParser.Parse(buffer);
 
+#if DEBUG
+                var textCommand = Encoding.UTF8.GetString(commandParts.Command);
+                var textKey = Encoding.UTF8.GetString(commandParts.Key);
+                var textValue = Encoding.UTF8.GetString(commandParts.Value);
+                Console.WriteLine($"Команда от клиента {clientCounter}: {textCommand}, Ключ: {textKey}, Значение: {textValue}");
+#endif
+
                 var command = Encoding.UTF8.GetString(commandParts.Command);
                 var key = Encoding.UTF8.GetString(commandParts.Key);
-                var value = Encoding.UTF8.GetString(commandParts.Value);
-                Console.WriteLine($"Команда от клиента {clientCounter}: {command}, Ключ: {key}, Значение: {value}");
+                switch (command)
+                {
+                    case "GET":
+                        var result = _store.Get(key);
+                        break;
+                    case "SET":
+                        var value = commandParts.Value.ToArray();
+                        _store.Set(key, value);
+                        break;
+                    case "DELETE":
+                        _store.Delete(key);
+                        break;
+                    default:
+                        break;
+                }
             }
         }
         catch (OperationCanceledException) { }
