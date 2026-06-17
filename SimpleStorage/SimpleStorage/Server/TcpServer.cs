@@ -14,6 +14,8 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
     private readonly int _port = port;
     private readonly SimpleStore _store = store;
 
+    private readonly byte[] _successResponse = Encoding.UTF8.GetBytes("OK\r\n");
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -77,6 +79,7 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                 Console.WriteLine($"Команда от клиента {clientCounter}: {textCommand}, Ключ: {textKey}, Значение: {textValue}");
 #endif
 
+                byte[] response = [];
                 var command = Encoding.UTF8.GetString(commandParts.Command);
                 var key = Encoding.UTF8.GetString(commandParts.Key);
                 switch (command)
@@ -87,13 +90,17 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                     case "SET":
                         var value = commandParts.Value.ToArray();
                         _store.Set(key, value);
+                        response = _successResponse;
                         break;
                     case "DELETE":
                         _store.Delete(key);
+                        response = _successResponse;
                         break;
                     default:
                         break;
                 }
+
+                await client.SendAsync(response, cancellationToken);
             }
         }
         catch (OperationCanceledException) { }
