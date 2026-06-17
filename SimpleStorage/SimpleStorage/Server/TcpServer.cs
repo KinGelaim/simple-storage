@@ -72,7 +72,8 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                     break;
                 }
 
-                var commandParts = CommandParser.Parse(buffer);
+                var bufferSpan = buffer.AsSpan(0, bytesRead);
+                var commandParts = CommandParser.Parse(bufferSpan);
 
 #if DEBUG
                 var textCommand = Encoding.UTF8.GetString(commandParts.Command);
