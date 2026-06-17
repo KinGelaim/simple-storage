@@ -1,3 +1,4 @@
+using SimpleStorage.Models;
 using SimpleStorage.Parser;
 using SimpleStorage.Storage;
 using System.Buffers;
@@ -82,31 +83,7 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                 Console.WriteLine($"Команда от клиента {clientCounter}: {textCommand}, Ключ: {textKey}, Значение: {textValue}");
 #endif
 
-                byte[] response;
-                var command = Encoding.UTF8.GetString(commandParts.Command);
-                var key = Encoding.UTF8.GetString(commandParts.Key);
-                switch (command)
-                {
-                    case "GET":
-                        var result = _store.Get(key);
-                        response = result is not null
-                            ? result
-                            : _notFoundResponse;
-                        break;
-                    case "SET":
-                        var value = commandParts.Value.ToArray();
-                        _store.Set(key, value);
-                        response = _successResponse;
-                        break;
-                    case "DELETE":
-                        _store.Delete(key);
-                        response = _successResponse;
-                        break;
-                    default:
-                        response = _errorResponse;
-                        break;
-                }
-
+                var response = ProcessClientCommand(commandParts);
                 await client.SendAsync(response, cancellationToken);
             }
         }
@@ -122,6 +99,32 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
             client.Shutdown(SocketShutdown.Both);
             client.Close();
         }
+    }
+
+    private byte[] ProcessClientCommand(CommandParts commandParts)
+    {
+        byte[] response;
+        var command = Encoding.UTF8.GetString(commandParts.Command);
+        var key = Encoding.UTF8.GetString(commandParts.Key);
+        switch (command)
+        {
+            case "GET":
+                response = _store.Get(key) ?? _notFoundResponse;
+                break;
+            case "SET":
+                var value = commandParts.Value.ToArray();
+                _store.Set(key, value);
+                response = _successResponse;
+                break;
+            case "DELETE":
+                _store.Delete(key);
+                response = _successResponse;
+                break;
+            default:
+                response = _errorResponse;
+                break;
+        }
+        return response;
     }
 
     public void Dispose() => _socket?.Dispose();
