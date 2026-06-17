@@ -1,4 +1,5 @@
 using SimpleStorage.Parser;
+using SimpleStorage.Storage;
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
@@ -6,11 +7,12 @@ using System.Text;
 
 namespace SimpleStorage.Server;
 
-internal sealed class TcpServer(string ip, int port) : IDisposable
+internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDisposable
 {
     private Socket? _socket;
     private readonly IPAddress _ip = IPAddress.Parse(ip);
     private readonly int _port = port;
+    private readonly SimpleStore _store = store;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
