@@ -1,6 +1,7 @@
 /* 
  * Небольшое тестовое приложение для проверки работы SimpleStorage
  */
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -17,6 +18,9 @@ var serverIp = "127.0.0.1";
 var serverPort = 8080;
 var messages = new string[] { "SET user:1 data", "GET user:1", "GET user:2", "DELETE user:3", "DELETE" };
 
+var bufferSize = 1024;
+var responseBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+
 using var clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 try
 {
@@ -31,6 +35,10 @@ try
 
         await clientSocket.SendAsync(data, SocketFlags.None);
         Console.WriteLine($"Отправлено сообщение: {message}");
+
+        var bytesReceived = await clientSocket.ReceiveAsync(responseBuffer, SocketFlags.None);
+        var responseMessage = Encoding.UTF8.GetString(responseBuffer, 0, bytesReceived);
+        Console.WriteLine($"Получено сообщение: {responseMessage}");
 
         await Task.Delay(1000);
     }
