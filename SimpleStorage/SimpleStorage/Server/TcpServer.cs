@@ -16,6 +16,7 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
 
     private readonly byte[] _successResponse = Encoding.UTF8.GetBytes("OK\r\n");
     private readonly byte[] _notFoundResponse = Encoding.UTF8.GetBytes("(nil)\r\n");
+    private readonly byte[] _errorResponse = Encoding.UTF8.GetBytes("-ERR Unknown command\r\n");
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -80,7 +81,7 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                 Console.WriteLine($"Команда от клиента {clientCounter}: {textCommand}, Ключ: {textKey}, Значение: {textValue}");
 #endif
 
-                byte[] response = [];
+                byte[] response;
                 var command = Encoding.UTF8.GetString(commandParts.Command);
                 var key = Encoding.UTF8.GetString(commandParts.Key);
                 switch (command)
@@ -101,6 +102,7 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                         response = _successResponse;
                         break;
                     default:
+                        response = _errorResponse;
                         break;
                 }
 
