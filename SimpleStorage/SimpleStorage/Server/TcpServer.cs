@@ -1,4 +1,6 @@
+using SimpleStorage.Models;
 using SimpleStorage.Parser;
+using SimpleStorage.Storage;
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
@@ -6,11 +8,16 @@ using System.Text;
 
 namespace SimpleStorage.Server;
 
-internal sealed class TcpServer(string ip, int port) : IDisposable
+internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDisposable
 {
     private Socket? _socket;
     private readonly IPAddress _ip = IPAddress.Parse(ip);
     private readonly int _port = port;
+    private readonly SimpleStore _store = store;
+
+    private readonly byte[] _successResponse = Encoding.UTF8.GetBytes("OK\r\n");
+    private readonly byte[] _notFoundResponse = Encoding.UTF8.GetBytes("(nil)\r\n");
+    private readonly byte[] _errorResponse = Encoding.UTF8.GetBytes("-ERR Unknown command\r\n");
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -45,7 +52,7 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
         }
     }
 
-    private static async Task ProcessClientAsync(
+    private async Task ProcessClientAsync(
         Socket client,
         int clientCounter,
         CancellationToken cancellationToken)
@@ -66,12 +73,18 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
                     break;
                 }
 
-                var commandParts = CommandParser.Parse(buffer);
+                var bufferSpan = buffer.AsSpan(0, bytesRead);
+                var commandParts = CommandParser.Parse(bufferSpan);
 
-                var command = Encoding.UTF8.GetString(commandParts.Command);
-                var key = Encoding.UTF8.GetString(commandParts.Key);
-                var value = Encoding.UTF8.GetString(commandParts.Value);
-                Console.WriteLine($"Команда от клиента {clientCounter}: {command}, Ключ: {key}, Значение: {value}");
+#if DEBUG
+                var textCommand = Encoding.UTF8.GetString(commandParts.Command);
+                var textKey = Encoding.UTF8.GetString(commandParts.Key);
+                var textValue = Encoding.UTF8.GetString(commandParts.Value);
+                Console.WriteLine($"Команда от клиента {clientCounter}: {textCommand}, Ключ: {textKey}, Значение: {textValue}");
+#endif
+
+                var response = ProcessClientCommand(commandParts);
+                await client.SendAsync(response, cancellationToken);
             }
         }
         catch (OperationCanceledException) { }
@@ -86,6 +99,32 @@ internal sealed class TcpServer(string ip, int port) : IDisposable
             client.Shutdown(SocketShutdown.Both);
             client.Close();
         }
+    }
+
+    private byte[] ProcessClientCommand(CommandParts commandParts)
+    {
+        byte[] response;
+        var command = Encoding.UTF8.GetString(commandParts.Command);
+        var key = Encoding.UTF8.GetString(commandParts.Key);
+        switch (command)
+        {
+            case "GET":
+                response = _store.Get(key) ?? _notFoundResponse;
+                break;
+            case "SET":
+                var value = commandParts.Value.ToArray();
+                _store.Set(key, value);
+                response = _successResponse;
+                break;
+            case "DELETE":
+                _store.Delete(key);
+                response = _successResponse;
+                break;
+            default:
+                response = _errorResponse;
+                break;
+        }
+        return response;
     }
 
     public void Dispose() => _socket?.Dispose();
