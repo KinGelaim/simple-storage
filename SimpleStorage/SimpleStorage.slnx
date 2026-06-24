@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="SimpleStorage.Client/SimpleStorage.Client.csproj" Id="ddf91c0d-9f02-4705-b154-0265821f1c18" />
+  <Project Path="SimpleStorage.Client.Simple/SimpleStorage.Client.Simple.csproj" Id="36e749d7-8756-4465-b9e0-da31d865749d" />
   <Project Path="SimpleStorage.Tests/SimpleStorage.Tests.csproj" Id="e387e3ae-011b-42b2-a472-cc9f594c33e3" />
   <Project Path="SimpleStorage/SimpleStorage.csproj" />
 </Solution>
