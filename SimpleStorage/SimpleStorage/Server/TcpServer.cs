@@ -59,10 +59,11 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
     {
         var bufferSize = 1024;
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        var residual = Memory<byte>.Empty;
 
         try
         {
-            while (true)
+            while (client.Connected)
             {
                 var bytesRead = await client.ReceiveAsync(
                     buffer,
@@ -73,18 +74,50 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                     break;
                 }
 
-                var bufferSpan = buffer.AsSpan(0, bytesRead);
-                var commandParts = CommandParser.Parse(bufferSpan);
+                var allBuffer = new byte[residual.Length + bytesRead];
+                residual.Span.CopyTo(allBuffer.AsSpan(0, residual.Length));
+                buffer.AsSpan(0, bytesRead).CopyTo(allBuffer.AsSpan(residual.Length));
+
+                var allMemory = new ReadOnlyMemory<byte>(allBuffer);
+
+                var offset = 0;
+                while (true)
+                {
+                    var currentSpan = allMemory[offset..];
+                    var position = CommandParser.GetPosition(currentSpan.Span);
+                    if (position.HasValue)
+                    {
+                        var commandParts = CommandParser.Parse(currentSpan.Span[..position.Value]);
 
 #if DEBUG
-                var textCommand = Encoding.UTF8.GetString(commandParts.Command);
-                var textKey = Encoding.UTF8.GetString(commandParts.Key);
-                var textValue = Encoding.UTF8.GetString(commandParts.Value);
-                Console.WriteLine($"Команда от клиента {clientCounter}: {textCommand}, Ключ: {textKey}, Значение: {textValue}");
+                        var textCommand = Encoding.UTF8.GetString(commandParts.Command);
+                        var textKey = Encoding.UTF8.GetString(commandParts.Key);
+                        var textValue = Encoding.UTF8.GetString(commandParts.Value);
+                        Console.WriteLine($"Команда от клиента {clientCounter}: {textCommand}, Ключ: {textKey}, Значение: {textValue}");
 #endif
 
-                var response = ProcessClientCommand(commandParts);
-                await client.SendAsync(response, cancellationToken);
+                        var response = ProcessClientCommand(commandParts);
+                        await client.SendAsync(response, cancellationToken);
+
+                        offset += position.Value;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                var remainingBytesCount = allMemory.Length - offset;
+                if (remainingBytesCount > 0)
+                {
+                    var remainingSpan = allMemory[offset..];
+                    residual = new byte[remainingSpan.Length];
+                    remainingSpan.CopyTo(residual);
+                }
+                else
+                {
+                    residual = Memory<byte>.Empty;
+                }
             }
         }
         catch (OperationCanceledException) { }
