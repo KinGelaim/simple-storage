@@ -1,6 +1,6 @@
 using SimpleStorage.Models;
 using SimpleStorage.Parser;
-using SimpleStorage.Storage;
+using SimpleStorage.Services;
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
@@ -8,16 +8,18 @@ using System.Text;
 
 namespace SimpleStorage.Server;
 
-internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDisposable
+/// <summary>
+/// TCP сервер для обработки входящих команд
+/// </summary>
+/// <param name="ip">IP сервера</param>
+/// <param name="port">Порт сервера</param>
+/// <param name="commandChannelService">Сервис хранящий канал для передачи входящих команд</param>
+internal sealed class TcpServer(string ip, int port, CommandChannelService commandChannelService) : IDisposable
 {
     private Socket? _socket;
     private readonly IPAddress _ip = IPAddress.Parse(ip);
     private readonly int _port = port;
-    private readonly SimpleStore _store = store;
-
-    private readonly byte[] _successResponse = Encoding.UTF8.GetBytes("OK\r\n");
-    private readonly byte[] _notFoundResponse = Encoding.UTF8.GetBytes("(nil)\r\n");
-    private readonly byte[] _errorResponse = Encoding.UTF8.GetBytes("-ERR Unknown command\r\n");
+    private readonly CommandChannelService _commandChannelService = commandChannelService;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -96,7 +98,11 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
                         Console.WriteLine($"Команда от клиента {clientCounter}: {textCommand}, Ключ: {textKey}, Значение: {textValue}");
 #endif
 
-                        var response = ProcessClientCommand(commandParts);
+                        var command = CreateCommand(commandParts);
+                        var commandContext = new CommandContext(command);
+                        await _commandChannelService.Writer.WriteAsync(commandContext, cancellationToken);
+
+                        var response = await commandContext.ResponseTcs.Task;
                         await client.SendAsync(response, cancellationToken);
 
                         offset += position.Value;
@@ -134,30 +140,32 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
         }
     }
 
-    private byte[] ProcessClientCommand(CommandParts commandParts)
+    private static Command? CreateCommand(CommandParts commandParts)
     {
-        byte[] response;
         var command = Encoding.UTF8.GetString(commandParts.Command);
         var key = Encoding.UTF8.GetString(commandParts.Key);
-        switch (command)
+        return command switch
         {
-            case "GET":
-                response = _store.Get(key) ?? _notFoundResponse;
-                break;
-            case "SET":
-                var value = commandParts.Value.ToArray();
-                _store.Set(key, value);
-                response = _successResponse;
-                break;
-            case "DELETE":
-                _store.Delete(key);
-                response = _successResponse;
-                break;
-            default:
-                response = _errorResponse;
-                break;
-        }
-        return response;
+            "GET" => new Command
+            {
+                Type = CommandType.Get,
+                Key = key,
+                Value = []
+            },
+            "SET" => new Command
+            {
+                Type = CommandType.Set,
+                Key = key,
+                Value = commandParts.Value.ToArray()
+            },
+            "DELETE" => new Command
+            {
+                Type = CommandType.Delete,
+                Key = key,
+                Value = []
+            },
+            _ => null,
+        };
     }
 
     public void Dispose() => _socket?.Dispose();

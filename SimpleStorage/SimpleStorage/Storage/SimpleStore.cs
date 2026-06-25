@@ -72,6 +72,9 @@ internal sealed class SimpleStore : IDisposable
         }
     }
 
+    /// <summary>
+    /// Получает статистику обращений к хранилищу
+    /// </summary>
     public (long SetCount, long GetCount, long DeleteCount) GetStatistics()
         => (Interlocked.Read(ref _setCount),
             Interlocked.Read(ref _getCount),

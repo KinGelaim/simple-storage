@@ -10,6 +10,11 @@ internal static class CommandParser
     private static readonly byte _byteSpace = (byte)' ';
     private static readonly byte[] _end = [(byte)'\r', (byte)'\n'];
 
+    /// <summary>
+    /// Получение позиции окончания команды
+    /// </summary>
+    /// <param name="buffer">Исходный буфер данных</param>
+    /// <returns>Возвращает позицию, если символ окончания команды найден, иначе null</returns>
     public static int? GetPosition(ReadOnlySpan<byte> buffer)
     {
         var position = buffer.IndexOf(_end);
