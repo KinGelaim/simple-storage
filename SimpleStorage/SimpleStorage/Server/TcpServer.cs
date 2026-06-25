@@ -24,7 +24,7 @@ internal sealed class TcpServer(string ip, int port, SimpleStore store) : IDispo
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         _socket.Bind(new IPEndPoint(_ip, _port));
-        _socket.Listen(backlog: 10);
+        _socket.Listen(backlog: 100);
 
         Console.WriteLine($"Сервер слушает по адресу {_ip}:{_port}");
 
