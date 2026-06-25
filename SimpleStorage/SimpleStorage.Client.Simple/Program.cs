@@ -16,7 +16,7 @@ Console.CancelKeyPress += (sender, e) =>
 
 var serverIp = "127.0.0.1";
 var serverPort = 8080;
-var messages = new string[] { "SET user:1 data", "GET user:1", "GET user:2", "DELETE user:3", "DELETE" };
+var messages = new string[] { "SET user:1 data\r\n", "GET user:1\r\n", "GET user:2\r\n", "DELETE user:3\r\n", "DELETE\r\n" };
 
 var bufferSize = 1024;
 var responseBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -26,7 +26,7 @@ try
 {
     await clientSocket.ConnectAsync(IPAddress.Parse(serverIp), serverPort);
     Console.WriteLine("Подключено к серверу!");
-    Console.WriteLine("Для завершения нажмите Ctrl+C");
+    Console.WriteLine("Для завершения нажмите Ctrl+C\n");
 
     while (!shouldStop)
     {
@@ -34,11 +34,12 @@ try
         var data = Encoding.UTF8.GetBytes(message);
 
         await clientSocket.SendAsync(data, SocketFlags.None);
-        Console.WriteLine($"Отправлено сообщение: {message}");
+        Console.Write($"Отправлено сообщение: {message}");
 
         var bytesReceived = await clientSocket.ReceiveAsync(responseBuffer, SocketFlags.None);
         var responseMessage = Encoding.UTF8.GetString(responseBuffer, 0, bytesReceived);
-        Console.WriteLine($"Получено сообщение: {responseMessage}");
+        Console.Write($"Получено сообщение: {responseMessage}");
+        Console.WriteLine();
 
         await Task.Delay(1000);
     }
