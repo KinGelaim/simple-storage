@@ -3,16 +3,16 @@ using System.Text;
 
 namespace SimpleStorage.Client.LoadTesting;
 
-internal sealed class TcpClientWrapper(string host, int port) : IDisposable
+internal sealed class TcpClient(string host, int port) : IDisposable
 {
     private readonly string _host = host;
     private readonly int _port = port;
-    private TcpClient? _client;
+    private System.Net.Sockets.TcpClient? _client;
     private NetworkStream? _stream;
 
     public async Task ConnectAsync()
     {
-        _client = new TcpClient();
+        _client = new System.Net.Sockets.TcpClient();
         await _client.ConnectAsync(_host, _port);
         _stream = _client.GetStream();
     }
