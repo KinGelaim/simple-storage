@@ -4,7 +4,7 @@ using SimpleStorage.Client.LoadTesting;
 var host = "127.0.0.1";
 var port = 8080;
 
-var scenario = Scenario.Create(
+var setScenario = Scenario.Create(
     "test_scenario",
     async context =>
     {
@@ -28,4 +28,15 @@ var scenario = Scenario.Create(
         });
 
         return setStep;
-    });
+    })
+    .WithWarmUpDuration(TimeSpan.FromSeconds(7))
+    .WithLoadSimulations(
+        Simulation.Inject(
+            rate: 100,
+            interval: TimeSpan.FromSeconds(1),
+            during: TimeSpan.FromSeconds(30))
+    );
+
+NBomberRunner
+    .RegisterScenarios(setScenario)
+    .Run();
