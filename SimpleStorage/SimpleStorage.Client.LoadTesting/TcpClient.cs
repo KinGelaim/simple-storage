@@ -17,11 +17,11 @@ internal sealed class TcpClient(string host, int port) : IDisposable
         _stream = _client.GetStream();
     }
 
-    public async Task<string> SetAsync(string key, string value)
+    public async Task<string?> SetAsync(string key, string value)
     {
         if (_stream is null)
         {
-            return string.Empty;
+            return null;
         }
 
         var command = $"SET {key} {value}\r\n";
@@ -31,11 +31,11 @@ internal sealed class TcpClient(string host, int port) : IDisposable
         return await ReadResponseAsync();
     }
 
-    public async Task<string> GetAsync(string key)
+    public async Task<string?> GetAsync(string key)
     {
         if (_stream is null)
         {
-            return string.Empty;
+            return null;
         }
 
         var command = $"GET {key}\r\n";
@@ -45,15 +45,20 @@ internal sealed class TcpClient(string host, int port) : IDisposable
         return await ReadResponseAsync();
     }
 
-    private async Task<string> ReadResponseAsync()
+    private async Task<string?> ReadResponseAsync()
     {
         if (_stream is null)
         {
-            return string.Empty;
+            return null;
         }
 
         var buffer = new byte[1024];
         var byteCount = await _stream.ReadAsync(buffer);
+        if (byteCount == 0)
+        {
+            return null;
+        }
+
         return Encoding.UTF8.GetString(buffer, 0, byteCount).Trim();
     }
 
