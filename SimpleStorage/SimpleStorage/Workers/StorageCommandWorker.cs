@@ -58,7 +58,7 @@ internal sealed class StorageCommandWorker(
                     }
                     break;
                 case CommandType.Set:
-                    var userProfile = JsonSerializer.Deserialize<UserProfile>(command.Value);
+                    var userProfile = SafeDeserialize(command.Value);
                     if (userProfile is null)
                     {
                         response = _deserializationResponse;
@@ -77,6 +77,18 @@ internal sealed class StorageCommandWorker(
                     break;
             }
             commandContext.ResponseTcs.SetResult(response);
+        }
+    }
+
+    private static UserProfile? SafeDeserialize(byte[] bytes)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<UserProfile>(bytes);
+        }
+        catch
+        {
+            return null;
         }
     }
 }
