@@ -1,7 +1,9 @@
+using SimpleStorage.DTO;
 using SimpleStorage.Models;
 using SimpleStorage.Services;
 using SimpleStorage.Storage;
 using System.Text;
+using System.Text.Json;
 
 namespace SimpleStorage.Workers;
 
@@ -20,6 +22,7 @@ internal sealed class StorageCommandWorker(
     private readonly byte[] _successResponse = Encoding.UTF8.GetBytes("OK\r\n");
     private readonly byte[] _notFoundResponse = Encoding.UTF8.GetBytes("(nil)\r\n");
     private readonly byte[] _errorResponse = Encoding.UTF8.GetBytes("-ERR Unknown command\r\n");
+    private readonly byte[] _deserializationResponse = Encoding.UTF8.GetBytes("-ERR Deserialization error\r\n");
     private readonly byte[] _end = [(byte)'\r', (byte)'\n'];
 
     /// <summary>
@@ -44,9 +47,10 @@ internal sealed class StorageCommandWorker(
                     var value = _storage.Get(command.Key);
                     if (value is not null)
                     {
-                        response = new byte[value.Length + _end.Length];
-                        Array.Copy(value, response, value.Length);
-                        Array.Copy(_end, 0, response, value.Length, _end.Length);
+                        var bytes = JsonSerializer.SerializeToUtf8Bytes(value);
+                        response = new byte[bytes.Length + _end.Length];
+                        Array.Copy(bytes, response, bytes.Length);
+                        Array.Copy(_end, 0, response, bytes.Length, _end.Length);
                     }
                     else
                     {
@@ -54,7 +58,14 @@ internal sealed class StorageCommandWorker(
                     }
                     break;
                 case CommandType.Set:
-                    _storage.Set(command.Key, command.Value);
+                    var userProfile = JsonSerializer.Deserialize<UserProfile>(command.Value);
+                    if (userProfile is null)
+                    {
+                        response = _deserializationResponse;
+                        break;
+                    }
+
+                    _storage.Set(command.Key, userProfile);
                     response = _successResponse;
                     break;
                 case CommandType.Delete:

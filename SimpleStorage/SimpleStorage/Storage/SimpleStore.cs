@@ -1,3 +1,6 @@
+using SimpleStorage.DTO;
+using System.Text.Json;
+
 namespace SimpleStorage.Storage;
 
 /// <summary>
@@ -16,15 +19,16 @@ internal sealed class SimpleStore : IDisposable
     /// Добавление или обновление значения по ключу
     /// </summary>
     /// <param name="key">Ключ</param>
-    /// <param name="value">Значение</param>
-    public void Set(string key, byte[] value)
+    /// <param name="userProfile">Значение</param>
+    public void Set(string key, UserProfile userProfile)
     {
         Interlocked.Increment(ref _setCount);
 
         _lock.EnterWriteLock();
         try
         {
-            _data[key] = value;
+            var data = JsonSerializer.SerializeToUtf8Bytes(userProfile);
+            _data[key] = data;
         }
         finally
         {
@@ -37,14 +41,20 @@ internal sealed class SimpleStore : IDisposable
     /// </summary>
     /// <param name="key">Ключ</param>
     /// <returns>Значение по ключу или null, если ключ не найден</returns>
-    public byte[]? Get(string key)
+    public UserProfile? Get(string key)
     {
         Interlocked.Increment(ref _getCount);
 
         _lock.EnterReadLock();
         try
         {
-            _data.TryGetValue(key, out var value);
+            _data.TryGetValue(key, out var bytes);
+            if (bytes is null)
+            {
+                return null;
+            }
+
+            var value = JsonSerializer.Deserialize<UserProfile>(bytes);
             return value;
         }
         finally

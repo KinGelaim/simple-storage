@@ -1,3 +1,4 @@
+using SimpleStorage.DTO;
 using SimpleStorage.Storage;
 
 namespace SimpleStorage.Tests.Storage;
@@ -9,18 +10,25 @@ public sealed class SimpleStoreTests
     {
         // Arrange
         var store = new SimpleStore();
+
         var key1 = "key1";
-        var value1 = new byte[] { 1, 2, 3 };
+        var userProfile1 = CreateUserProfile(1);
         var key2 = "key2";
-        var value2 = new byte[] { 4, 5, 6 };
+        var userProfile2 = CreateUserProfile(2);
 
         // Act
-        store.Set(key1, value1);
-        store.Set(key2, value2);
+        store.Set(key1, userProfile1);
+        store.Set(key2, userProfile2);
 
         // Assert
-        Assert.Equal(value1, store.Get(key1));
-        Assert.Equal(value2, store.Get(key2));
+        var resultUser1 = store.Get(key1);
+        var resultUser2 = store.Get(key2);
+
+        Assert.NotNull(resultUser1);
+        AssertUserProfilesEqual(userProfile1, resultUser1);
+
+        Assert.NotNull(resultUser2);
+        AssertUserProfilesEqual(userProfile2, resultUser2);
     }
 
     [Fact]
@@ -28,17 +36,21 @@ public sealed class SimpleStoreTests
     {
         // Arrange
         var store = new SimpleStore();
-        var key1 = "key1";
-        var value1 = new byte[] { 1, 2, 3 };
-        store.Set(key1, value1);
 
-        var value2 = new byte[] { 4, 5, 6 };
+        var key = "key1";
+        var userProfile1 = CreateUserProfile(1);
+        store.Set(key, userProfile1);
+
+        var userProfile2 = CreateUserProfile(2);
 
         // Act
-        store.Set(key1, value2);
+        store.Set(key, userProfile2);
 
         // Assert
-        Assert.Equal(value2, store.Get(key1));
+        var resultUser = store.Get(key);
+        Assert.NotNull(resultUser);
+
+        AssertUserProfilesEqual(userProfile2, resultUser);
     }
 
     [Fact]
@@ -59,15 +71,17 @@ public sealed class SimpleStoreTests
     {
         // Arrange
         var store = new SimpleStore();
+
         var key = "key";
-        var value = new byte[] { 1, 2, 3 };
-        store.Set(key, value);
+        var userProfile = CreateUserProfile(1);
+        store.Set(key, userProfile);
 
         // Act
         store.Delete(key);
 
         // Assert
-        Assert.Null(store.Get(key));
+        var result = store.Get(key);
+        Assert.Null(result);
     }
 
     [Fact]
@@ -87,9 +101,9 @@ public sealed class SimpleStoreTests
             var index = i;
             tasks[i] = Task.Run(() =>
             {
-                var key = $"key_{index}";
-                var value = BitConverter.GetBytes(index);
-                store.Set(key, value);
+                var key = $"user_{index}";
+                var userProfile = CreateUserProfile(index);
+                store.Set(key, userProfile);
             });
         }
 
@@ -99,12 +113,12 @@ public sealed class SimpleStoreTests
             var index = i - setTasksCount;
             tasks[i] = Task.Run(() =>
             {
-                var key = $"key_{index}";
-                var result = store.Get(key);
-                if (result != null)
+                var key = $"user_{index}";
+                var user = store.Get(key);
+                if (user != null)
                 {
-                    var val = BitConverter.ToInt32(result, 0);
-                    Assert.Equal(index, val);
+                    var expected = CreateUserProfile(index);
+                    AssertUserProfilesEqual(expected, user);
                 }
             });
         }
@@ -120,12 +134,29 @@ public sealed class SimpleStoreTests
         // Проверка данных по ключам
         for (var i = 0; i < setTasksCount; i++)
         {
-            var key = $"key_{i}";
-            var value = store.Get(key);
-            Assert.NotNull(value);
+            var key = $"user_{i}";
+            var userProfile = store.Get(key);
+            Assert.NotNull(userProfile);
 
-            var val = BitConverter.ToInt32(value, 0);
-            Assert.Equal(i, val);
+            var expected = CreateUserProfile(i);
+            AssertUserProfilesEqual(expected, userProfile);
         }
+    }
+
+    private static UserProfile CreateUserProfile(int id) =>
+        new()
+        {
+            Id = id,
+            UserName = $"User{id}",
+            CreatedAt = DateTime.UtcNow
+        };
+
+    private static void AssertUserProfilesEqual(
+        UserProfile expected,
+        UserProfile actual)
+    {
+        Assert.Equal(expected.Id, actual.Id);
+        Assert.Equal(expected.UserName, actual.UserName);
+        Assert.Equal(expected.CreatedAt, actual.CreatedAt, TimeSpan.FromSeconds(1));
     }
 }
