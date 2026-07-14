@@ -16,3 +16,5 @@ var setGetScenario = Scenarios.CreateSimpleSetGetScenario(host, port)
 NBomberRunner
     .RegisterScenarios(setGetScenario)
     .Run();
+
+Console.ReadKey();

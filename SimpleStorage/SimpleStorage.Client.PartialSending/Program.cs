@@ -10,7 +10,8 @@ Console.WriteLine("\n--- Симуляция частичной отправки 
 
 // Подгатавливаем сообщение
 var key = $"user:{Random.Shared.Next(1000, 9999)}";
-var value = $"data_for_{key}_{Guid.NewGuid()}";
+// lang=json,strict
+var value = """{"Id": 123, "UserName": "Misha", "CreatedAt": "2026-07-14T20:42:14"}""";
 var command = $"SET {key} {value}\r\n";
 
 // Отправляем по частям
