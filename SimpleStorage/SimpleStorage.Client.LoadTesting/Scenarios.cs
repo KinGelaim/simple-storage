@@ -1,5 +1,7 @@
 using NBomber.Contracts;
 using NBomber.CSharp;
+using SimpleStorage.DTO;
+using System.Text.Json;
 
 namespace SimpleStorage.Client.LoadTesting;
 
@@ -18,7 +20,7 @@ internal static class Scenarios
                         await client.ConnectAsync();
 
                         var key = $"key_{Random.Shared.Next(1000, 9999)}";
-                        var value = Guid.NewGuid().ToString();
+                        var value = CreateSimpleValue();
                         await client.SetAsync(key, value);
 
                         return Response.Ok();
@@ -73,7 +75,7 @@ internal static class Scenarios
 
                     await Step.Run("set_command", context, async () =>
                     {
-                        var value = Guid.NewGuid().ToString();
+                        var value = CreateSimpleValue();
                         var response = await client.SetAsync(key, value);
                         if (response is null)
                         {
@@ -113,7 +115,7 @@ internal static class Scenarios
 
                     await Step.Run("set_command", context, async () =>
                     {
-                        var value = Guid.NewGuid().ToString();
+                        var value = CreateSimpleValue();
                         var response = await client.SetAsync(key, value);
                         if (response is null)
                         {
@@ -163,7 +165,7 @@ internal static class Scenarios
 
                             await Step.Run("set_command", context, async () =>
                             {
-                                var value = Guid.NewGuid().ToString();
+                                var value = CreateSimpleValue();
                                 var response = await client.SetAsync(key, value);
                                 if (response is null)
                                 {
@@ -192,4 +194,15 @@ internal static class Scenarios
 
                     return Response.Ok();
                 });
+
+    private static string CreateSimpleValue()
+    {
+        var userProfile = new UserProfile()
+        {
+            Id = Random.Shared.Next(1000, 9999),
+            UserName = "Misha",
+            CreatedAt = DateTime.UtcNow
+        };
+        return JsonSerializer.Serialize(userProfile);
+    }
 }

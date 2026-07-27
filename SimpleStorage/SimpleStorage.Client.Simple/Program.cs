@@ -16,7 +16,14 @@ Console.CancelKeyPress += (sender, e) =>
 
 var serverIp = "127.0.0.1";
 var serverPort = 8080;
-var messages = new string[] { "SET user:1 data\r\n", "GET user:1\r\n", "GET user:2\r\n", "DELETE user:3\r\n", "DELETE\r\n" };
+var messages = new string[] {
+    "SET user:1 {\"Id\": 123, \"UserName\": \"Misha\", \"CreatedAt\": \"2026-07-14T20:42:14\"}\r\n",
+    "SET user:1 data\r\n",
+    "GET user:1\r\n",
+    "GET user:2\r\n",
+    "DELETE user:3\r\n",
+    "DELETE\r\n"
+};
 
 var bufferSize = 1024;
 var responseBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);

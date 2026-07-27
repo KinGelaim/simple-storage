@@ -2,6 +2,7 @@
  * Небольшое тестовое приложение для нагрузочной проверки SimpleStorage
  */
 using SimpleStorage.Client.Benchmark;
+using System.Globalization;
 using System.Text;
 
 Console.WriteLine("Тестовый клиент для нагрузочной проверки");
@@ -59,7 +60,8 @@ static async Task SendMessageWithoutStorageAsync()
 static async Task SendMessageWithStorageAsync()
 {
     Console.WriteLine("Генерируем сообщение для отправки С обращением к хранилищу (SET)");
-    var message = $"SET user:1 {new string('X', 1011)}\r\n";
+    var value = CreateSimpleValue();
+    var message = $"SET user:1111 {value}\r\n";
     var messageData = Encoding.UTF8.GetBytes(message);
     await SendMessageAsync(messageData);
 }
@@ -84,7 +86,7 @@ static async Task SendMessagesWithStorageAsync()
 {
     Console.WriteLine("Генерируем сообщения для отправки С обращением к хранилищу (GET, SET, DELETE)");
     var key = $"user:{Random.Shared.Next(1000, 9999)}";
-    var value = $"data_for_{key}_{Guid.NewGuid()}_{new string('X', 889)}";
+    var value = CreateSimpleValue();
 
     var getMessage = $"GET {key}\r\n";
     var setMessage = $"SET {key} {value}\r\n";
@@ -122,4 +124,11 @@ static async Task SendMessagesAsync(byte[][] messagesData)
     );
 
     Console.WriteLine();
+}
+
+static string CreateSimpleValue()
+{
+    var id = Random.Shared.Next(1000, 9999);
+    var createdAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+    return $$"""{"Id": {{id}}, "UserName": "{{new string('X', 944)}}", "CreatedAt": "{{createdAt}}"}""";
 }
