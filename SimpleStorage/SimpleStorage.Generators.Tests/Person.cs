@@ -3,7 +3,7 @@ namespace SimpleStorage.Generators.Tests;
 [GenerateBinarySerializer]
 public partial class Person
 {
-    public required int Id { get; set; }
-    public required string Name { get; set; }
-    public required DateTime BirthDate { get; set; }
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public DateTime BirthDate { get; set; }
 }

@@ -102,6 +102,39 @@ namespace {namespaceName}
 
         stringBuilder.AppendLine($@"
         }}
+
+        public static {className} DeserializeFromBinary(Stream stream)
+        {{
+            var obj = new {className}();
+            using var reader = new BinaryReader(stream);
+
+");
+
+        foreach (var prop in properties)
+        {
+            var name = prop.Name;
+            var type = prop.Type.ToDisplayString();
+
+            switch (type)
+            {
+                case "int":
+                    stringBuilder.AppendLine($"            obj.{name} = reader.ReadInt32();");
+                    break;
+                case "string":
+                    stringBuilder.AppendLine($"            obj.{name} = reader.ReadString();");
+                    break;
+                case "System.DateTime":
+                    stringBuilder.AppendLine($"            obj.{name} = new DateTime(reader.ReadInt64());");
+                    break;
+                default:
+                    stringBuilder.AppendLine($"            // TODO: десериализация {type} для свойства {name}");
+                    break;
+            }
+        }
+
+        stringBuilder.AppendLine($@"
+            return obj;
+        }}
     }}
 }}");
         return stringBuilder.ToString();

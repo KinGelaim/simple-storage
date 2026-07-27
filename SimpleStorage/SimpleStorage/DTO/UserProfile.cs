@@ -11,15 +11,15 @@ public sealed partial class UserProfile
     /// <summary>
     /// Идентификатор пользователя
     /// </summary>
-    public required int Id { get; set; }
+    public int Id { get; set; }
 
     /// <summary>
     /// Имя пользователя
     /// </summary>
-    public required string UserName { get; set; }
+    public string UserName { get; set; } = string.Empty;
 
     /// <summary>
     /// Дата создания
     /// </summary>
-    public required DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
