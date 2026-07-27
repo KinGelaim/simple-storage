@@ -1,9 +1,12 @@
+using SimpleStorage.Generators;
+
 namespace SimpleStorage.DTO;
 
 /// <summary>
 /// Информация о профиле пользователя
 /// </summary>
-public sealed class UserProfile
+[GenerateBinarySerializer]
+public sealed partial class UserProfile
 {
     /// <summary>
     /// Идентификатор пользователя

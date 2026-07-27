@@ -27,8 +27,9 @@ internal sealed class SimpleStore : IDisposable
         _lock.EnterWriteLock();
         try
         {
-            var data = JsonSerializer.SerializeToUtf8Bytes(userProfile);
-            _data[key] = data;
+            using var stream = new MemoryStream();
+            userProfile.SerializeToBinary(stream);
+            _data[key] = stream.ToArray();
         }
         finally
         {
