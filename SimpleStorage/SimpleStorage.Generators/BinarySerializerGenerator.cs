@@ -89,10 +89,10 @@ namespace {namespaceName}
                     stringBuilder.AppendLine($"            writer.Write({name});");
                     break;
                 case "string":
-                    stringBuilder.AppendLine($"            writer.Write({name} ?? \"\");");
+                    stringBuilder.AppendLine($"            writer.Write({name});");
                     break;
                 case "System.DateTime":
-                    stringBuilder.AppendLine($"            writer.Write({name}.ToBinary());");
+                    stringBuilder.AppendLine($"            writer.Write({name}.Ticks);");
                     break;
                 default:
                     stringBuilder.AppendLine($"            // TODO: сериализация {type} для свойства {name}");
