@@ -3,6 +3,8 @@
   <Project Path="SimpleStorage.Client.LoadTesting/SimpleStorage.Client.LoadTesting.csproj" Id="735e744f-0d06-48ed-8f32-9de261d6230f" />
   <Project Path="SimpleStorage.Client.PartialSending/SimpleStorage.Client.PartialSending.csproj" Id="7014bbb2-4089-4a12-9efc-0ba846cf5f03" />
   <Project Path="SimpleStorage.Client.Simple/SimpleStorage.Client.Simple.csproj" Id="36e749d7-8756-4465-b9e0-da31d865749d" />
+  <Project Path="SimpleStorage.Generators.Tests/SimpleStorage.Generators.Tests.csproj" Id="5f6f73ac-9f9a-4ddb-95e4-cb6fc2f43976" />
+  <Project Path="SimpleStorage.Generators/SimpleStorage.Generators.csproj" Id="2ebd1ed0-5071-4a02-ae86-d1d2745caa61" />
   <Project Path="SimpleStorage.Tests/SimpleStorage.Tests.csproj" Id="e387e3ae-011b-42b2-a472-cc9f594c33e3" />
   <Project Path="SimpleStorage/SimpleStorage.csproj" />
 </Solution>
