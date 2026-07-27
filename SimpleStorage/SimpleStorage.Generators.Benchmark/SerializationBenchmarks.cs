@@ -24,6 +24,16 @@ public class SerializationBenchmarks
         return ms.ToArray();
     }
 
+    private readonly byte[] _sharedBuffer = new byte[1024];
+
+    [Benchmark]
+    public int BinarySerializationZeroAlloc()
+    {
+        using var ms = new MemoryStream(_sharedBuffer);
+        _userProfile.SerializeToBinary(ms);
+        return (int)ms.Position;
+    }
+
     [Benchmark]
     public string JsonSerialization() => JsonSerializer.Serialize(_userProfile);
 }
