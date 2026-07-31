@@ -15,7 +15,7 @@ public sealed class BinarySerializerGenerator : IIncrementalGenerator
             "SG0001",
             "Unsupported property type",
             "Property '{0}' in class '{1}' has unsupported type '{2}' for binary serialization",
-            "GenerateSerializer",
+            "Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true
         );

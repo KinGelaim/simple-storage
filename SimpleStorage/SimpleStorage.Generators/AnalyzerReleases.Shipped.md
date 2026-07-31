@@ -7,4 +7,4 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|--------------------
-SG0001  |  Usage   |  Error   | UnsupportedTypeRule
+SG0001  | Usage    | Error    | UnsupportedTypeRule
