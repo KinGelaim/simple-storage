@@ -13,22 +13,22 @@ public sealed class BinarySerializerGenerator : IIncrementalGenerator
     {
         var classDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: (s, _) => s is ClassDeclarationSyntax,
-                transform: (ctx, token) =>
+                predicate: (node, _) => node is ClassDeclarationSyntax cds && cds.AttributeLists.Count > 0,
+                transform: (ctx, cancellationToken) =>
                 {
-                    var classSyntax = (ClassDeclarationSyntax)ctx.Node;
+                    var classDeclaration = (ClassDeclarationSyntax)ctx.Node;
                     var semanticModel = ctx.SemanticModel;
-                    var classSymbol = semanticModel.GetDeclaredSymbol(classSyntax, token);
-                    if (classSymbol == null)
+                    if (semanticModel.GetDeclaredSymbol(classDeclaration, cancellationToken) is not INamedTypeSymbol classSymbol)
                     {
                         return null;
                     }
 
                     foreach (var attr in classSymbol.GetAttributes())
                     {
+                        var name = attr.AttributeClass.Name;
                         var attrName = attr.AttributeClass?.ToDisplayString();
 
-                        if (attrName == "SimpleStorage.Generators.GenerateBinarySerializerAttribute" ||
+                        if (name == "GenerateBinarySerializerAttribute" ||
                             attrName?.EndsWith("GenerateBinarySerializerAttribute", StringComparison.InvariantCulture) == true)
                         {
                             return classSymbol;
@@ -37,11 +37,12 @@ public sealed class BinarySerializerGenerator : IIncrementalGenerator
 
                     return null;
                 })
-            .Where(symbol => symbol != null);
+            .Where(symbol => symbol is not null);
 
         var compilationAndClasses = context.CompilationProvider.Combine(classDeclarations.Collect());
 
-        context.RegisterSourceOutput(compilationAndClasses,
+        context.RegisterSourceOutput(
+            compilationAndClasses,
             (ctx, combined) =>
             {
                 var (compilation, symbols) = combined;
