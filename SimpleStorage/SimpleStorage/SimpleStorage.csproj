@@ -19,4 +19,12 @@
     <InternalsVisibleTo Include="SimpleStorage.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SimpleStorage.Generators\SimpleStorage.Generators.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SimpleStorage.Generators\SimpleStorage.Generators.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+  </ItemGroup>
+
 </Project>

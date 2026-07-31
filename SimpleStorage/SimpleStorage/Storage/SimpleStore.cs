@@ -1,5 +1,4 @@
 using SimpleStorage.DTO;
-using System.Text.Json;
 
 namespace SimpleStorage.Storage;
 
@@ -27,8 +26,9 @@ internal sealed class SimpleStore : IDisposable
         _lock.EnterWriteLock();
         try
         {
-            var data = JsonSerializer.SerializeToUtf8Bytes(userProfile);
-            _data[key] = data;
+            using var stream = new MemoryStream();
+            userProfile.SerializeToBinary(stream);
+            _data[key] = stream.ToArray();
         }
         finally
         {
@@ -54,7 +54,8 @@ internal sealed class SimpleStore : IDisposable
                 return null;
             }
 
-            var value = JsonSerializer.Deserialize<UserProfile>(bytes);
+            using var stream = new MemoryStream(bytes);
+            var value = UserProfile.DeserializeFromBinary(stream);
             return value;
         }
         finally

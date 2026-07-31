@@ -1,10 +1,5 @@
-using SimpleStorage.Generators;
+namespace SimpleStorage.Generators.Benchmark;
 
-namespace SimpleStorage.DTO;
-
-/// <summary>
-/// Информация о профиле пользователя
-/// </summary>
 [GenerateBinarySerializer]
 public sealed partial class UserProfile
 {
