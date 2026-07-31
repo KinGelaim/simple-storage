@@ -22,9 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SimpleStorage.Generators\SimpleStorage.Generators.csproj"
-                      ReferenceOutputAssembly="false"
-                      OutputItemType="Analyzer" />
+    <ProjectReference Include="..\SimpleStorage.Generators\SimpleStorage.Generators.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,7 +30,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Generated\*.cs" />
+    <Compile Include="Generated\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Generated\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Generated\**\*.cs" />
   </ItemGroup>
 
 </Project>

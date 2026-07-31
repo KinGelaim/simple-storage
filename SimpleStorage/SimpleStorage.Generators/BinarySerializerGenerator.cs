@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -9,6 +10,29 @@ namespace SimpleStorage.Generators;
 [Generator(LanguageNames.CSharp)]
 public sealed class BinarySerializerGenerator : IIncrementalGenerator
 {
+    private static readonly DiagnosticDescriptor _unsupportedTypeRule =
+        new(
+            "SG0001",
+            "Unsupported property type",
+            "Property '{0}' in class '{1}' has unsupported type '{2}' for binary serialization",
+            "GenerateSerializer",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true
+        );
+
+    private static readonly Dictionary<string, (string ReadMethod, string WriteCast)> _supportedTypes = new()
+    {
+        { "int", ("ReadInt32()", string.Empty) },
+        { "long", ("ReadInt64()", string.Empty) },
+        { "bool", ("ReadBoolean()", string.Empty) },
+        { "double", ("ReadDouble()", string.Empty) },
+        { "float", ("ReadSingle()", string.Empty) },
+        { "string", ("ReadString()", string.Empty) },
+        { "System.DateTime", ("new DateTime(reader.ReadInt64())", ".Ticks") }
+    };
+
+    private readonly record struct GenerationResult(INamedTypeSymbol? Symbol, List<Diagnostic>? Diagnostics);
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var classDeclarations = context.SyntaxProvider
@@ -20,24 +44,24 @@ public sealed class BinarySerializerGenerator : IIncrementalGenerator
                     var semanticModel = ctx.SemanticModel;
                     if (semanticModel.GetDeclaredSymbol(classDeclaration, cancellationToken) is not INamedTypeSymbol classSymbol)
                     {
-                        return null;
+                        return default;
                     }
 
                     foreach (var attr in classSymbol.GetAttributes())
                     {
-                        var name = attr.AttributeClass.Name;
+                        var name = attr.AttributeClass?.Name;
                         var attrName = attr.AttributeClass?.ToDisplayString();
 
                         if (name == "GenerateBinarySerializerAttribute" ||
                             attrName?.EndsWith("GenerateBinarySerializerAttribute", StringComparison.InvariantCulture) == true)
                         {
-                            return classSymbol;
+                            return ValidateProperties(classSymbol);
                         }
                     }
 
-                    return null;
+                    return default;
                 })
-            .Where(symbol => symbol is not null);
+            .Where(result => result.Symbol is not null);
 
         var compilationAndClasses = context.CompilationProvider.Combine(classDeclarations.Collect());
 
@@ -45,10 +69,23 @@ public sealed class BinarySerializerGenerator : IIncrementalGenerator
             compilationAndClasses,
             (ctx, combined) =>
             {
-                var (compilation, symbols) = combined;
-                foreach (var symbol in symbols)
+                var (_, results) = combined;
+                foreach (var result in results)
                 {
-                    if (symbol is INamedTypeSymbol classSymbol)
+                    if (result.Diagnostics is not null)
+                    {
+                        foreach (var diagnostic in result.Diagnostics)
+                        {
+                            ctx.ReportDiagnostic(diagnostic);
+                        }
+                    }
+
+                    if (result.Diagnostics?.Any(d => d.Severity == DiagnosticSeverity.Error) == true)
+                    {
+                        continue;
+                    }
+
+                    if (result.Symbol is INamedTypeSymbol classSymbol)
                     {
                         var namespaceName = classSymbol.ContainingNamespace.ToDisplayString();
                         var code = GenerateSerializerCode(classSymbol, namespaceName);
@@ -56,6 +93,40 @@ public sealed class BinarySerializerGenerator : IIncrementalGenerator
                     }
                 }
             });
+    }
+
+    private static GenerationResult ValidateProperties(INamedTypeSymbol classSymbol)
+    {
+        List<Diagnostic>? diagnostics = null;
+
+        var properties = classSymbol.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(p => p.DeclaredAccessibility == Accessibility.Public && !p.IsStatic);
+
+        foreach (var prop in properties)
+        {
+            var typeStr = prop.Type.ToDisplayString();
+
+            var isSupported = _supportedTypes.ContainsKey(typeStr) ||
+                              typeStr == "byte[]" ||
+                              typeStr == "string";
+
+            if (!isSupported)
+            {
+                diagnostics ??= [];
+
+                var location = prop.Locations.FirstOrDefault() ?? Location.None;
+                diagnostics.Add(Diagnostic.Create(
+                    _unsupportedTypeRule,
+                    location,
+                    prop.Name,
+                    classSymbol.Name,
+                    typeStr
+                ));
+            }
+        }
+
+        return new GenerationResult(classSymbol, diagnostics);
     }
 
     private static string GenerateSerializerCode(INamedTypeSymbol classSymbol, string namespaceName)
@@ -85,20 +156,14 @@ namespace {namespaceName}
         {
             var name = prop.Name;
             var type = prop.Type.ToDisplayString();
-            switch (type)
+
+            if (_supportedTypes.TryGetValue(type, out var typeInfo))
             {
-                case "int":
-                    stringBuilder.AppendLine($"            writer.Write({name});");
-                    break;
-                case "string":
-                    stringBuilder.AppendLine($"            writer.Write({name});");
-                    break;
-                case "System.DateTime":
-                    stringBuilder.AppendLine($"            writer.Write({name}.Ticks);");
-                    break;
-                default:
-                    stringBuilder.AppendLine($"            // TODO: сериализация {type} для свойства {name}");
-                    break;
+                stringBuilder.AppendLine($"            writer.Write({name}{typeInfo.WriteCast});");
+            }
+            else
+            {
+                stringBuilder.AppendLine($"            // TODO: сериализация {type} для свойства {name}");
             }
         }
 
@@ -115,20 +180,20 @@ namespace {namespaceName}
             var name = prop.Name;
             var type = prop.Type.ToDisplayString();
 
-            switch (type)
+            if (_supportedTypes.TryGetValue(type, out var typeInfo))
             {
-                case "int":
-                    stringBuilder.AppendLine($"            obj.{name} = reader.ReadInt32();");
-                    break;
-                case "string":
-                    stringBuilder.AppendLine($"            obj.{name} = reader.ReadString();");
-                    break;
-                case "System.DateTime":
-                    stringBuilder.AppendLine($"            obj.{name} = new DateTime(reader.ReadInt64());");
-                    break;
-                default:
-                    stringBuilder.AppendLine($"            // TODO: десериализация {type} для свойства {name}");
-                    break;
+                if (type == "System.DateTime")
+                {
+                    stringBuilder.AppendLine($"            obj.{name} = {typeInfo.ReadMethod};");
+                }
+                else
+                {
+                    stringBuilder.AppendLine($"            obj.{name} = reader.{typeInfo.ReadMethod};");
+                }
+            }
+            else
+            {
+                stringBuilder.AppendLine($"            // TODO: десериализация {type} для свойства {name}");
             }
         }
 
