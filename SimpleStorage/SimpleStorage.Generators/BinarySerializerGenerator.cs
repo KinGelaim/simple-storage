@@ -27,7 +27,6 @@ public sealed class BinarySerializerGenerator : IIncrementalGenerator
         { "bool", ("ReadBoolean()", string.Empty) },
         { "double", ("ReadDouble()", string.Empty) },
         { "float", ("ReadSingle()", string.Empty) },
-        { "string", ("ReadString()", string.Empty) },
         { "System.DateTime", ("new DateTime(reader.ReadInt64())", ".Ticks") }
     };
 
@@ -108,8 +107,8 @@ public sealed class BinarySerializerGenerator : IIncrementalGenerator
             var typeStr = prop.Type.ToDisplayString();
 
             var isSupported = _supportedTypes.ContainsKey(typeStr) ||
-                              typeStr == "byte[]" ||
-                              typeStr == "string";
+                typeStr == "string" ||
+                typeStr == "byte[]";
 
             if (!isSupported)
             {
@@ -161,6 +160,27 @@ namespace {namespaceName}
             {
                 stringBuilder.AppendLine($"            writer.Write({name}{typeInfo.WriteCast});");
             }
+            else if (type == "string")
+            {
+                stringBuilder.AppendLine($"            if ({name} is null)");
+                stringBuilder.AppendLine("            {");
+                stringBuilder.AppendLine("                writer.Write(0);");
+                stringBuilder.AppendLine("            }");
+                stringBuilder.AppendLine("            else");
+                stringBuilder.AppendLine("            {");
+                stringBuilder.AppendLine($"                var {name}Bytes = Encoding.UTF8.GetBytes({name});");
+                stringBuilder.AppendLine($"                writer.Write({name}Bytes.Length);");
+                stringBuilder.AppendLine($"                writer.Write({name}Bytes);");
+                stringBuilder.AppendLine("            }");
+            }
+            else if (type == "byte[]")
+            {
+                stringBuilder.AppendLine($"            writer.Write({name}?.Length ?? 0);");
+                stringBuilder.AppendLine($"            if ({name} is not null)");
+                stringBuilder.AppendLine("            {");
+                stringBuilder.AppendLine($"                writer.Write({name});");
+                stringBuilder.AppendLine("            }");
+            }
             else
             {
                 stringBuilder.AppendLine($"            // TODO: сериализация {type} для свойства {name}");
@@ -190,6 +210,24 @@ namespace {namespaceName}
                 {
                     stringBuilder.AppendLine($"            obj.{name} = reader.{typeInfo.ReadMethod};");
                 }
+            }
+            else if (type == "string")
+            {
+                stringBuilder.AppendLine($"            var {name}Length = reader.ReadInt32();");
+                stringBuilder.AppendLine($"            if ({name}Length == 0)");
+                stringBuilder.AppendLine("            {");
+                stringBuilder.AppendLine($"                obj.{name} = string.Empty;");
+                stringBuilder.AppendLine("            }");
+                stringBuilder.AppendLine("            else");
+                stringBuilder.AppendLine("            {");
+                stringBuilder.AppendLine($"                var {name}Bytes = reader.ReadBytes({name}Length);");
+                stringBuilder.AppendLine($"                obj.{name} = Encoding.UTF8.GetString({name}Bytes);");
+                stringBuilder.AppendLine("            }");
+            }
+            else if (type == "byte[]")
+            {
+                stringBuilder.AppendLine($"            var {name}Length = reader.ReadInt32();");
+                stringBuilder.AppendLine($"            obj.{name} = reader.ReadBytes({name}Length);");
             }
             else
             {
