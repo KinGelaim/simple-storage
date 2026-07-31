@@ -1,5 +1,4 @@
 using BenchmarkDotNet.Attributes;
-using System.Text.Json;
 
 namespace SimpleStorage.Generators.Benchmark;
 
@@ -16,8 +15,16 @@ public class SerializationBenchmarks
             CreatedAt = new DateTime(2026, 07, 27)
         };
 
+    [Benchmark(Baseline = true)]
+    public string NewtonsoftJsonSerialization() =>
+        Newtonsoft.Json.JsonConvert.SerializeObject(_userProfile);
+
     [Benchmark]
-    public byte[] BinarySerialization()
+    public string SystemTextJsonSerialization() =>
+        System.Text.Json.JsonSerializer.Serialize(_userProfile);
+
+    [Benchmark]
+    public byte[] SourceGeneratorSerialization()
     {
         using var ms = new MemoryStream();
         _userProfile.SerializeToBinary(ms);
@@ -27,13 +34,10 @@ public class SerializationBenchmarks
     private readonly byte[] _sharedBuffer = new byte[1024];
 
     [Benchmark]
-    public int BinarySerializationZeroAlloc()
+    public int SourceGeneratorSerializationWithZeroAlloc()
     {
         using var ms = new MemoryStream(_sharedBuffer);
         _userProfile.SerializeToBinary(ms);
         return (int)ms.Position;
     }
-
-    [Benchmark]
-    public string JsonSerialization() => JsonSerializer.Serialize(_userProfile);
 }
