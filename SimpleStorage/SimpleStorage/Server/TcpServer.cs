@@ -23,23 +23,32 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
 
     private const int MaxMessageSize = 4 * 1024;
 
+    private const int DefaultMaxHandlersConcurrentConnections = 100;
+    private readonly SemaphoreSlim _semaphore = new(DefaultMaxHandlersConcurrentConnections);
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         _socket.Bind(new IPEndPoint(_ip, _port));
-        _socket.Listen(backlog: 100);
+        _socket.Listen(backlog: 150);
 
         Console.WriteLine($"Сервер слушает по адресу {_ip}:{_port}");
 
         var clientCounter = 1;
         while (true)
         {
+            Socket? client = null;
+            var startedProcessing = false;
+
             try
             {
-                var client = await _socket.AcceptAsync(cancellationToken);
+                client = await _socket.AcceptAsync(cancellationToken);
 
                 Console.WriteLine($"Клиент {clientCounter} подключился");
+
+                await _semaphore.WaitAsync(cancellationToken);
+                startedProcessing = true;
 
                 _ = ProcessClientAsync(client, clientCounter, cancellationToken);
 
@@ -52,6 +61,20 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
             catch (Exception ex)
             {
                 Console.WriteLine($"Ошибка подключения клиента: {ex.Message}");
+            }
+            finally
+            {
+                if (!startedProcessing && client is not null)
+                {
+                    try
+                    {
+                        client.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Ошибка при закрытии клиента: {ex.Message}");
+                    }
+                }
             }
         }
     }
@@ -145,6 +168,8 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
             ArrayPool<byte>.Shared.Return(buffer);
             client.Shutdown(SocketShutdown.Both);
             client.Close();
+
+            _semaphore.Release();
         }
     }
 
@@ -176,5 +201,9 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
         };
     }
 
-    public void Dispose() => _socket?.Dispose();
+    public void Dispose()
+    {
+        _socket?.Dispose();
+        _semaphore?.Dispose();
+    }
 }
