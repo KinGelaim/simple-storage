@@ -1,7 +1,9 @@
 using SimpleStorage.Models;
 using SimpleStorage.Parser;
 using SimpleStorage.Services;
+using SimpleStorage.Telemetry;
 using System.Buffers;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -28,6 +30,9 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        using var serverActivity = TelemetryConfig.ActivitySource
+            .StartActivity("TcpServer.Start", ActivityKind.Server);
+
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         _socket.Bind(new IPEndPoint(_ip, _port));
@@ -84,6 +89,11 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
         int clientCounter,
         CancellationToken cancellationToken)
     {
+        using var clientActivity = TelemetryConfig.ActivitySource
+            .StartActivity("TcpServer.ProcessClientStart", ActivityKind.Internal)
+            ?.SetTag("client.remoteEndPoint", client.RemoteEndPoint)
+            ?.SetTag("client.localEndPoint", client.LocalEndPoint);
+
         var bufferSize = 1024;
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         var residual = Memory<byte>.Empty;
@@ -131,6 +141,12 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
 
                         var command = CreateCommand(commandParts);
                         var commandContext = new CommandContext(command);
+
+                        using var commadActivity = TelemetryConfig.ActivitySource
+                            .StartActivity("TcpServer.ProcessCommand", ActivityKind.Internal)
+                            ?.SetTag("command.type", command?.Type)
+                            ?.SetTag("command.key", command?.Key);
+
                         await _commandChannelService.Writer.WriteAsync(commandContext, cancellationToken);
 
                         var response = await commandContext.ResponseTcs.Task;
