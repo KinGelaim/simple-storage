@@ -147,7 +147,12 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
                             ?.SetTag("command.type", command?.Type)
                             ?.SetTag("command.key", command?.Key);
 
+                        var sw = Stopwatch.StartNew();
                         await _commandChannelService.Writer.WriteAsync(commandContext, cancellationToken);
+                        sw.Stop();
+
+                        TelemetryConfig.ProcessedCommandsCounter.Add(1);
+                        TelemetryConfig.CommandProcessingDurationMs.Record(sw.Elapsed.TotalNanoseconds);
 
                         var response = await commandContext.ResponseTcs.Task;
                         await client.SendAsync(response, cancellationToken);
