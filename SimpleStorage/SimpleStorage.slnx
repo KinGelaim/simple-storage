@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="SimpleStorage.Client.Benchmark/SimpleStorage.Client.Benchmark.csproj" Id="25cd5954-44e1-4d25-bbfc-ba8ad4c9767c" />
   <Project Path="SimpleStorage.Client.LoadTesting/SimpleStorage.Client.LoadTesting.csproj" Id="735e744f-0d06-48ed-8f32-9de261d6230f" />
+  <Project Path="SimpleStorage.Client.MaxMessage/SimpleStorage.Client.MaxMessage.csproj" Id="3ba25b94-2d45-4937-8d6a-56cfcb3db8c4" />
   <Project Path="SimpleStorage.Client.PartialSending/SimpleStorage.Client.PartialSending.csproj" Id="7014bbb2-4089-4a12-9efc-0ba846cf5f03" />
   <Project Path="SimpleStorage.Client.Simple/SimpleStorage.Client.Simple.csproj" Id="36e749d7-8756-4465-b9e0-da31d865749d" />
   <Project Path="SimpleStorage.Generators.Benchmark/SimpleStorage.Generators.Benchmark.csproj" Id="bcfc4569-daa5-4bed-a6ab-b8be696c7c48" />

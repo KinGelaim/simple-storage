@@ -21,6 +21,8 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
     private readonly int _port = port;
     private readonly CommandChannelService _commandChannelService = commandChannelService;
 
+    private const int MaxMessageSize = 4 * 1024;
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -89,6 +91,12 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
                     var position = CommandParser.GetPosition(currentSpan.Span);
                     if (position.HasValue)
                     {
+                        if (position.Value > MaxMessageSize)
+                        {
+                            Console.WriteLine($"Превышен лимит размера команды от клиента {clientCounter}: {position.Value} байт (лимит {MaxMessageSize} байт). Разрываю соединение...");
+                            return;
+                        }
+
                         var commandParts = CommandParser.Parse(currentSpan.Span[..position.Value]);
 
 #if DEBUG
