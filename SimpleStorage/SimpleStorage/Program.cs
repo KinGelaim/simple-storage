@@ -1,6 +1,11 @@
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using SimpleStorage.Server;
 using SimpleStorage.Services;
 using SimpleStorage.Storage;
+using SimpleStorage.Telemetry;
 using SimpleStorage.Workers;
 
 var cts = new CancellationTokenSource();
@@ -11,6 +16,22 @@ Console.CancelKeyPress += (sender, e) =>
     Console.WriteLine("Получена команда на завершение. Дожидаемся завершения работы сервера....");
 };
 Console.WriteLine("Для завершения нажмите Ctrl+C");
+
+var resource = ResourceBuilder
+    .CreateDefault()
+    .AddService(TelemetryConfig.ServiceName);
+
+using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+    .SetResourceBuilder(resource)
+    .AddSource(TelemetryConfig.ServiceName)
+    .AddConsoleExporter()
+    .Build();
+
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .SetResourceBuilder(resource)
+    .AddMeter(TelemetryConfig.ServiceName)
+    .AddConsoleExporter()
+    .Build();
 
 var store = new SimpleStore();
 var commandChannelService = new CommandChannelService();

@@ -1,7 +1,9 @@
 using SimpleStorage.Models;
 using SimpleStorage.Parser;
 using SimpleStorage.Services;
+using SimpleStorage.Telemetry;
 using System.Buffers;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -21,23 +23,37 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
     private readonly int _port = port;
     private readonly CommandChannelService _commandChannelService = commandChannelService;
 
+    private const int MaxMessageSize = 4 * 1024;
+
+    private const int DefaultMaxHandlersConcurrentConnections = 100;
+    private readonly SemaphoreSlim _semaphore = new(DefaultMaxHandlersConcurrentConnections);
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        using var serverActivity = TelemetryConfig.ActivitySource
+            .StartActivity("TcpServer.Start", ActivityKind.Server);
+
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         _socket.Bind(new IPEndPoint(_ip, _port));
-        _socket.Listen(backlog: 100);
+        _socket.Listen(backlog: 150);
 
         Console.WriteLine($"Сервер слушает по адресу {_ip}:{_port}");
 
         var clientCounter = 1;
         while (true)
         {
+            Socket? client = null;
+            var startedProcessing = false;
+
             try
             {
-                var client = await _socket.AcceptAsync(cancellationToken);
+                client = await _socket.AcceptAsync(cancellationToken);
 
                 Console.WriteLine($"Клиент {clientCounter} подключился");
+
+                await _semaphore.WaitAsync(cancellationToken);
+                startedProcessing = true;
 
                 _ = ProcessClientAsync(client, clientCounter, cancellationToken);
 
@@ -51,6 +67,20 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
             {
                 Console.WriteLine($"Ошибка подключения клиента: {ex.Message}");
             }
+            finally
+            {
+                if (!startedProcessing && client is not null)
+                {
+                    try
+                    {
+                        client.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Ошибка при закрытии клиента: {ex.Message}");
+                    }
+                }
+            }
         }
     }
 
@@ -59,6 +89,11 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
         int clientCounter,
         CancellationToken cancellationToken)
     {
+        using var clientActivity = TelemetryConfig.ActivitySource
+            .StartActivity("TcpServer.ProcessClientStart", ActivityKind.Internal)
+            ?.SetTag("client.remoteEndPoint", client.RemoteEndPoint)
+            ?.SetTag("client.localEndPoint", client.LocalEndPoint);
+
         var bufferSize = 1024;
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         var residual = Memory<byte>.Empty;
@@ -89,6 +124,12 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
                     var position = CommandParser.GetPosition(currentSpan.Span);
                     if (position.HasValue)
                     {
+                        if (position.Value > MaxMessageSize)
+                        {
+                            Console.WriteLine($"Превышен лимит размера команды от клиента {clientCounter}: {position.Value} байт (лимит {MaxMessageSize} байт). Разрываю соединение...");
+                            return;
+                        }
+
                         var commandParts = CommandParser.Parse(currentSpan.Span[..position.Value]);
 
 #if DEBUG
@@ -100,7 +141,18 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
 
                         var command = CreateCommand(commandParts);
                         var commandContext = new CommandContext(command);
+
+                        using var commadActivity = TelemetryConfig.ActivitySource
+                            .StartActivity("TcpServer.ProcessCommand", ActivityKind.Internal)
+                            ?.SetTag("command.type", command?.Type)
+                            ?.SetTag("command.key", command?.Key);
+
+                        var sw = Stopwatch.StartNew();
                         await _commandChannelService.Writer.WriteAsync(commandContext, cancellationToken);
+                        sw.Stop();
+
+                        TelemetryConfig.ProcessedCommandsCounter.Add(1);
+                        TelemetryConfig.CommandProcessingDurationMs.Record(sw.Elapsed.TotalNanoseconds);
 
                         var response = await commandContext.ResponseTcs.Task;
                         await client.SendAsync(response, cancellationToken);
@@ -137,6 +189,8 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
             ArrayPool<byte>.Shared.Return(buffer);
             client.Shutdown(SocketShutdown.Both);
             client.Close();
+
+            _semaphore.Release();
         }
     }
 
@@ -168,5 +222,9 @@ internal sealed class TcpServer(string ip, int port, CommandChannelService comma
         };
     }
 
-    public void Dispose() => _socket?.Dispose();
+    public void Dispose()
+    {
+        _socket?.Dispose();
+        _semaphore?.Dispose();
+    }
 }
